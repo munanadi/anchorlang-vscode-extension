@@ -4,14 +4,17 @@ An attempt to write a extension to support [Anchor lang](https://www.anchor-lang
 
 ---
 
-## Expected Features
-- [ ] Code Completion
-- [ ] Open issues and request for features..
+This for now calculate a size of an anchor account struct and creates a impl block as shown below
 
+![](./demo/types.gif)
 
 ---
 
-## Demo
+## Expected Features
 
-Works for normal types now!
-![](./demo/normal-types.gif)
+- [ ] Find Space for a account struct
+  - [x] simple types 
+  - [ ] string
+  - [ ] enums
+- [ ] Code Completion
+- [ ] Open issues and request for features..

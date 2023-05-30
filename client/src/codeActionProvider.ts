@@ -13,14 +13,18 @@ export class AccountCodeActionProvider
     const selectedText = document.getText(range);
 
     // Regular expression pattern to match the struct with parse a struct
-    const regex =
-      /\s*([\s\S]*?)pub\s*struct\s*(\w+)\s*\{([\s\S]*?)\}/;
+    const structRegex =
+      /\s*([\s\S]*?)pub\s*(struct)\s*(\w+)\s*\{([\s\S]*?)\}/;
+
+    // TODO: Find Enums in the doc
+    // const enumRegex =
+    //   /\s*([\s\S]*?)pub\s*(enum)\s*(\w+)\s*\{([\s\S]*?)\}/;
 
     // Check if the selected text matches the struct pattern
-    const wholeStruct = regex.exec(selectedText);
+    const wholeStruct = structRegex.exec(selectedText);
 
     if (!wholeStruct) {
-      console.log("No struct with #[account]");
+      // console.log("No struct with #[account]");
       return [];
     }
 
@@ -30,6 +34,8 @@ export class AccountCodeActionProvider
       .trim()
       .split("\n");
 
+    // The space allocation is for only accounts without `zero-copy``
+    // https://www.anchor-lang.com/docs/space#:~:text=This%20only%20applies%20to%20accounts%20that%20don%27t%20use%20zero%2Dcopy
     const isAccount = decorators.some((decorator) => {
       return decorator === "#[account]";
     });
@@ -40,10 +46,10 @@ export class AccountCodeActionProvider
       return [];
     }
 
-    const structName = wholeStruct[2].toString().trim();
+    const structName = wholeStruct[3].toString().trim();
     const fieldsWithTypes: string[] = [];
 
-    new Array(wholeStruct[3])
+    new Array(wholeStruct[4])
       .toString()
       .trim()
       .split(",")
@@ -68,10 +74,11 @@ export class AccountCodeActionProvider
       "Calculate Space",
       vscode.CodeActionKind.Refactor
     );
+
     codeAction.edit = new vscode.WorkspaceEdit();
     codeAction.edit.insert(
       document.uri,
-      new Position(range.end.line + 1, 0),
+      new Position(range.end.line + 2, 0),
       implCode
     );
 
@@ -98,11 +105,12 @@ function generateImplCode(
     );
   });
 
-  codeLines.push(`}`);
+  codeLines.push(`}\n\n`);
 
   return codeLines.join("\n");
 }
 
+// Modify this function to handle different field types appropriately
 function getMemberSizeCodeLine(
   field: {
     name: string;
@@ -110,56 +118,121 @@ function getMemberSizeCodeLine(
   },
   isLast: boolean
 ): string {
-  // Modify this function to handle different field types appropriately
-  const type = field.type.toLowerCase();
+  const type = field.type;
   const name = field.name;
+
+  // For Nested types
+  const onlySimpleType = simpleTypes.includes(
+    type.toLowerCase()
+  );
+
+  let spaceAllocated: string;
+
+  if (onlySimpleType) {
+    spaceAllocated = spaceForType(type).toString();
+  } else {
+    // Matches either the Vec<T> or Option<T>
+    const vecOrOptionRegex = /(\w*)<(\w*)>/;
+    const [isVecOrOption, wrapper, innerType] = type.match(
+      vecOrOptionRegex
+    )
+      ? type.match(vecOrOptionRegex)
+      : [undefined, undefined, undefined];
+    // Check if array type
+    const isArrayType = type.split(";").length !== 1;
+    // Has to be either a String or Enum
+    const isString = type.trim() === "String";
+
+    if (isVecOrOption) {
+      // vector
+      if (wrapper.toLowerCase() === "vec") {
+        spaceAllocated = `4 + ( ${spaceForType(
+          innerType
+        )} * MAX_${name.toUpperCase()} )`;
+      } else {
+        // option
+        spaceAllocated = `1 + ${spaceForType(innerType)}`;
+      }
+    } else if (isArrayType) {
+      let [genericType, amount] = isArrayType
+        ? type.split(";")
+        : [undefined, undefined];
+
+      genericType = genericType.split("[")[1].trim();
+      amount = amount.split("]")[0].trim();
+
+      spaceAllocated = `${
+        spaceForType(genericType) * parseInt(amount)
+      } + // (${spaceForType(genericType)} * ${amount})`;
+    } else if (isString) {
+      console.log(`${name} is a String`);
+      // TODO: Ask for input for max size from user.
+      spaceAllocated = `4 // Add input from user here`;
+    } else {
+      // Has to be Enum. Find it in the document
+      // TODO: handle Enums.
+
+      console.log(`${type} has to be a Enum`);
+      spaceAllocated = `1 // largest size of enum`;
+    }
+  }
 
   // Construct the "filed - type comment"
   let returnString = `${
     isLast ? ";" : "+"
-  }// ${name} - ${type}`;
+  } // ${name} - ${type}`;
 
-  let spaceString = ``;
+  return `\t${spaceAllocated} ${returnString}`;
+}
+
+// returns space for the normal types
+function spaceForType(type: string): number {
+  type = type.toLowerCase();
 
   switch (type) {
     case "bool":
-      spaceString += `1`;
-      break;
+      return 1;
     case "u8":
     case "i8":
-      spaceString += `1`;
-      break;
+      return 1;
     case "u16":
     case "i16":
-      spaceString += `2`;
-      break;
+      return 2;
     case "u32":
     case "i32":
-      spaceString += `4`;
-      break;
+      return 4;
     case "u64":
     case "i64":
-      spaceString += `8`;
-      break;
+      return 8;
     case "u128":
     case "i128":
-      spaceString += `16`;
-      break;
+      return 16;
     case "f32":
-      spaceString += `4`;
-      break;
+      return 4;
     case "f64":
-      spaceString += `8`;
-      break;
+      return 8;
     case "pubkey":
-      spaceString += `32`;
-      break;
+      return 32;
     default: {
-      // TODO: handle gracefully.
-      console.log(`Unknow type! ${type}`);
-      spaceString += `0// ${name} - ${type}`;
+      console.log(`${type} not known`);
+      return 0;
     }
   }
-
-  return `\t${spaceString} ${returnString}`;
 }
+
+const simpleTypes = [
+  "bool",
+  "u8",
+  "i8",
+  "u16",
+  "i16",
+  "u32",
+  "i32",
+  "u64",
+  "i64",
+  "u128",
+  "i128",
+  "f32",
+  "f64",
+  "pubkey",
+];
