@@ -11,14 +11,42 @@ export class AccountCodeActionProvider
     token: vscode.CancellationToken
   ): vscode.ProviderResult<vscode.CodeAction[]> {
     const selectedText = document.getText(range);
+    const fullText = document.getText();
 
     // Regular expression pattern to match the struct with parse a struct
     const structRegex =
       /\s*([\s\S]*?)pub\s*(struct)\s*(\w+)\s*\{([\s\S]*?)\}/;
 
     // TODO: Find Enums in the doc
-    // const enumRegex =
-    //   /\s*([\s\S]*?)pub\s*(enum)\s*(\w+)\s*\{([\s\S]*?)\}/;
+    const enumRegex =
+      /\s*pub\s*enum\s*(\w+)\s*\{((?:[^{}]+|{[^{}]*}|(2?))*)\}/g;
+
+    let allEnumsMatch;
+    let allEnums = [];
+    while (
+      (allEnumsMatch = enumRegex.exec(fullText)) !== null
+    ) {
+      // This is necessary to avoid infinite loops with zero-width matches
+      if (allEnumsMatch.index === enumRegex.lastIndex) {
+        enumRegex.lastIndex++;
+      }
+
+      // The result can be accessed through the `allEnumsMatch`-variable.
+      allEnums.push(
+        allEnumsMatch.map((match, groupIndex) => {
+          if (groupIndex === 1 || groupIndex === 2) {
+            return match;
+          }
+        })
+      );
+    }
+
+    const EnumObjs: any = {};
+
+    allEnums.forEach((e) => {
+      let id = e[1].trim();
+      EnumObjs[id] = e[2].trim();
+    });
 
     // Check if the selected text matches the struct pattern
     const wholeStruct = structRegex.exec(selectedText);
@@ -67,7 +95,11 @@ export class AccountCodeActionProvider
     }
 
     // Generate the impl block code
-    const implCode = generateImplCode(fields, structName);
+    const implCode = generateImplCode(
+      fields,
+      structName,
+      EnumObjs
+    );
 
     // Create a new code action with the generated code
     const codeAction = new vscode.CodeAction(
@@ -88,7 +120,8 @@ export class AccountCodeActionProvider
 
 function generateImplCode(
   fields: { name: string; type: string }[],
-  structName: string
+  structName: string,
+  EnumObjs: any
 ): string {
   const codeLines = [
     `impl ${structName} {`,
@@ -101,7 +134,7 @@ function generateImplCode(
     const isLast = fieldCount === index + 1;
 
     codeLines.push(
-      `${getMemberSizeCodeLine(field, isLast)}`
+      `${getMemberSizeCodeLine(field, isLast, EnumObjs)}`
     );
   });
 
@@ -116,7 +149,8 @@ function getMemberSizeCodeLine(
     name: string;
     type: string;
   },
-  isLast: boolean
+  isLast: boolean,
+  EnumObjs: any
 ): string {
   const type = field.type;
   const name = field.name;
@@ -173,6 +207,11 @@ function getMemberSizeCodeLine(
       // TODO: handle Enums.
 
       console.log(`${type} has to be a Enum`);
+      if (EnumObjs[type]) {
+        console.log(
+          `yes, it is with body of ${EnumObjs[type]}`
+        );
+      }
       spaceAllocated = `1 // largest size of enum`;
     }
   }

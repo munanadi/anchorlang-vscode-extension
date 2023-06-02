@@ -18,3 +18,11 @@ This for now calculate a size of an anchor account struct and creates a impl blo
   - [ ] enums
 - [ ] Code Completion
 - [ ] Open issues and request for features..
+
+
+---
+
+## Local dev
+
+1. run `npm run watch` from root
+2. Hit `f5` to start debugging in vscode.
