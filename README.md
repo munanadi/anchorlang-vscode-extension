@@ -13,12 +13,11 @@ This for now calculate a size of an anchor account struct and creates a impl blo
 ## Expected Features
 
 - [ ] Find Space for a account struct
-  - [x] simple types 
+  - [x] ~~simple types~~
   - [ ] string
-  - [ ] enums
+  - [x] ~~enums~~
 - [ ] Code Completion
 - [ ] Open issues and request for features..
-
 
 ---
 

@@ -206,13 +206,50 @@ function getMemberSizeCodeLine(
       // Has to be Enum. Find it in the document
       // TODO: handle Enums.
 
-      console.log(`${type} has to be a Enum`);
-      if (EnumObjs[type]) {
-        console.log(
-          `yes, it is with body of ${EnumObjs[type]}`
-        );
-      }
-      spaceAllocated = `1 // largest size of enum`;
+      const enumBody = EnumObjs[type];
+      const fields = enumBody
+        .split("\n")
+        .map((ele) => ele.trim())
+        .filter((ele) => ele);
+
+      const structRegex = /\s*(\w+)\s*\{([\s\S]*?)\}/;
+
+      let largestField;
+
+      fields.forEach((field) => {
+        const wholeStruct = structRegex.exec(field);
+
+        if (wholeStruct) {
+          const structBody = wholeStruct[2].trim();
+
+          largestField = structBody.split(",").reduce(
+            (acc, val) => {
+              const [currName, currType] = val
+                .split(":")
+                .map((e) => e.trim());
+
+              const [prevName, prevType] = acc;
+
+              if (
+                spaceForType(currType) >
+                spaceForType(prevType)
+              ) {
+                return [currName, currType];
+              }
+              return [prevName, prevType];
+            },
+            ["null", "null"]
+          );
+        }
+      });
+
+      spaceAllocated = !largestField
+        ? `1 //`
+        : `1 + ${spaceForType(largestField[1])} +// ${
+            largestField[0]
+          } is the largest field`;
+
+      console.log(spaceAllocated);
     }
   }
 
