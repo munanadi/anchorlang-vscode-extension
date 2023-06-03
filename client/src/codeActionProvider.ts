@@ -13,6 +13,14 @@ export class AccountCodeActionProvider
     const selectedText = document.getText(range);
     const fullText = document.getText();
 
+    // Check if the code action was manually invoked
+    if (
+      context.triggerKind !==
+      vscode.CodeActionTriggerKind.Invoke
+    ) {
+      return []; // Return empty array if not manually invoked
+    }
+
     // Regular expression pattern to match the struct with parse a struct
     const structRegex =
       /\s*([\s\S]*?)pub\s*(struct)\s*(\w+)\s*\{([\s\S]*?)\}/;
