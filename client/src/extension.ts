@@ -8,7 +8,7 @@ import {
   ServerOptions,
   TransportKind,
 } from "vscode-languageclient/node";
-import { AccountCodeActionProvider } from "./codeActionProvider";
+import { calculateSpace } from "./codeActionProvider";
 
 let client: LanguageClient;
 
@@ -57,10 +57,25 @@ export function activate(context: ExtensionContext) {
 
   // Register Code Actions
   context.subscriptions.push(
-    vscode.languages.registerCodeActionsProvider(
-      "rust",
-      new AccountCodeActionProvider()
-    )
+    vscode.languages.registerCodeActionsProvider("rust", {
+      provideCodeActions(document, range, context, token) {
+        const codeAction = new vscode.CodeAction(
+          "Calculate Space",
+          vscode.CodeActionKind.Refactor
+        );
+
+        return [codeAction];
+      },
+      async resolveCodeAction(codeAction, token) {
+        // Run the calculateSpace function only when it's called.
+        if (codeAction.title === "Calculate Space") {
+          await calculateSpace(codeAction);
+          return codeAction;
+        }
+
+        return codeAction;
+      },
+    })
   );
 }
 

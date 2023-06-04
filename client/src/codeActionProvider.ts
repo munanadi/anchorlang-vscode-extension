@@ -1,129 +1,136 @@
 import * as vscode from "vscode";
-import { Position } from "vscode";
 
-export class AccountCodeActionProvider
-  implements vscode.CodeActionProvider
-{
-  provideCodeActions(
-    document: vscode.TextDocument,
-    range: vscode.Range,
-    context: vscode.CodeActionContext,
-    token: vscode.CancellationToken
-  ): vscode.ProviderResult<vscode.CodeAction[]> {
-    const selectedText = document.getText(range);
-    const fullText = document.getText();
+export async function calculateSpace(
+  codeAction: vscode.CodeAction
+) {
+  const editor = vscode.window.activeTextEditor;
+  const document = editor.document;
+  const range = editor.selection;
 
-    // Check if the code action was manually invoked
-    if (
-      context.triggerKind !==
-      vscode.CodeActionTriggerKind.Invoke
-    ) {
-      return []; // Return empty array if not manually invoked
-    }
+  const selectedText = document.getText(range);
+  const fullText = document.getText();
 
-    // Regular expression pattern to match the struct with parse a struct
-    const structRegex =
-      /\s*([\s\S]*?)pub\s*(struct)\s*(\w+)\s*\{([\s\S]*?)\}/;
+  // Find if the code action is triggered on a struct with #[account]
+  const { isValidStruct, structName, strcutFields } =
+    praseStrcut(selectedText);
 
-    // TODO: Find Enums in the doc
-    const enumRegex =
-      /\s*pub\s*enum\s*(\w+)\s*\{((?:[^{}]+|{[^{}]*}|(2?))*)\}/g;
-
-    let allEnumsMatch;
-    let allEnums = [];
-    while (
-      (allEnumsMatch = enumRegex.exec(fullText)) !== null
-    ) {
-      // This is necessary to avoid infinite loops with zero-width matches
-      if (allEnumsMatch.index === enumRegex.lastIndex) {
-        enumRegex.lastIndex++;
-      }
-
-      // The result can be accessed through the `allEnumsMatch`-variable.
-      allEnums.push(
-        allEnumsMatch.map((match, groupIndex) => {
-          if (groupIndex === 1 || groupIndex === 2) {
-            return match;
-          }
-        })
-      );
-    }
-
-    const EnumObjs: any = {};
-
-    allEnums.forEach((e) => {
-      let id = e[1].trim();
-      EnumObjs[id] = e[2].trim();
-    });
-
-    // Check if the selected text matches the struct pattern
-    const wholeStruct = structRegex.exec(selectedText);
-
-    if (!wholeStruct) {
-      // console.log("No struct with #[account]");
-      return [];
-    }
-
-    // Gets all strct decorators
-    const decorators = new Array(wholeStruct[1])
-      .toString()
-      .trim()
-      .split("\n");
-
-    // The space allocation is for only accounts without `zero-copy``
-    // https://www.anchor-lang.com/docs/space#:~:text=This%20only%20applies%20to%20accounts%20that%20don%27t%20use%20zero%2Dcopy
-    const isAccount = decorators.some((decorator) => {
-      return decorator === "#[account]";
-    });
-
-    if (!isAccount) {
-      // Does not have #[account] as a decorator.
-      // console.log("Does not have #[account] decorator");
-      return [];
-    }
-
-    const structName = wholeStruct[3].toString().trim();
-    const fieldsWithTypes: string[] = [];
-
-    new Array(wholeStruct[4])
-      .toString()
-      .trim()
-      .split(",")
-      .forEach((field) => {
-        field = field.trim();
-        field !== "" && fieldsWithTypes.push(field);
-      });
-
-    const fields: { name: string; type: string }[] = [];
-
-    for (const fieldType of fieldsWithTypes) {
-      const [filedWithVis, type] = fieldType.split(":"); // pub ident_name: type
-      const fieldName = filedWithVis.split(" ")[1].trim(); // pub ident_name
-      fields.push({ name: fieldName, type: type.trim() });
-    }
-
-    // Generate the impl block code
-    const implCode = generateImplCode(
-      fields,
-      structName,
-      EnumObjs
-    );
-
-    // Create a new code action with the generated code
-    const codeAction = new vscode.CodeAction(
-      "Calculate Space",
-      vscode.CodeActionKind.Refactor
-    );
-
-    codeAction.edit = new vscode.WorkspaceEdit();
-    codeAction.edit.insert(
-      document.uri,
-      new Position(range.end.line + 2, 0),
-      implCode
-    );
-
-    return [codeAction];
+  if (!isValidStruct) {
+    return;
   }
+
+  // Find Enums in the doc
+  const enumRegex =
+    /\s*pub\s*enum\s*(\w+)\s*\{((?:[^{}]+|{[^{}]*}|(2?))*)\}/g;
+
+  let allEnumsMatch;
+  let allEnums = [];
+  while (
+    (allEnumsMatch = enumRegex.exec(fullText)) !== null
+  ) {
+    // This is necessary to avoid infinite loops with zero-width matches
+    if (allEnumsMatch.index === enumRegex.lastIndex) {
+      enumRegex.lastIndex++;
+    }
+
+    // The result can be accessed through the `allEnumsMatch`-variable.
+    allEnums.push(
+      allEnumsMatch.map((match, groupIndex) => {
+        if (groupIndex === 1 || groupIndex === 2) {
+          return match;
+        }
+      })
+    );
+  }
+
+  const EnumObjs: any = {};
+
+  allEnums.forEach((e) => {
+    let id = e[1].trim();
+    EnumObjs[id] = e[2].trim();
+  });
+
+  // Generate the impl block code
+  const implCode = generateImplCode(
+    strcutFields,
+    structName,
+    EnumObjs
+  );
+
+  codeAction.edit = new vscode.WorkspaceEdit();
+  codeAction.edit.insert(
+    document.uri,
+    new vscode.Position(range.end.line + 2, 0),
+    implCode
+  );
+}
+
+interface StrcutTpye {
+  isValidStruct: boolean;
+  structName: string | null;
+  strcutFields: { name: string; type: string }[] | null;
+}
+
+function praseStrcut(text: string): StrcutTpye {
+  // Regular expression pattern to match the struct with parse a struct
+  const structRegex =
+    /\s*([\s\S]*?)pub\s*(struct)\s*(\w+)\s*\{([\s\S]*?)\}/;
+
+  // Check if the selected text matches the struct pattern
+  const match = structRegex.exec(text);
+
+  // No regex match for struct
+  if (!match) {
+    return {
+      isValidStruct: false,
+      structName: null,
+      strcutFields: null,
+    };
+  }
+
+  // Gets all strct decorators
+  const decorators = new Array(match[1])
+    .toString()
+    .trim()
+    .split("\n");
+
+  // The space allocation is for only accounts without `zero-copy``
+  // https://www.anchor-lang.com/docs/space#:~:text=This%20only%20applies%20to%20accounts%20that%20don%27t%20use%20zero%2Dcopy
+  const isAccount = decorators.some((decorator) => {
+    return decorator === "#[account]";
+  });
+
+  if (!isAccount) {
+    // Does not have #[account] as a decorator.
+    return {
+      isValidStruct: false,
+      strcutFields: null,
+      structName: null,
+    };
+  }
+
+  const structName = match[3].toString().trim();
+  const fieldsWithTypes: string[] = new Array(match[4])
+    .toString()
+    .trim()
+    .split(",")
+    .map((field) => {
+      field = field.trim();
+      return field && field;
+    })
+    .filter((r) => r);
+
+  const fields: { name: string; type: string }[] = [];
+  for (const fieldType of fieldsWithTypes) {
+    const [filedWithVis, type] = fieldType.split(":"); // pub ident_name: type
+    const fieldName = filedWithVis.split(" ")[1].trim(); // pub ident_name
+    fields.push({ name: fieldName, type: type.trim() });
+  }
+
+  return {
+    isValidStruct: true,
+    strcutFields: fields,
+    structName,
+  };
 }
 
 function generateImplCode(
