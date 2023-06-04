@@ -62,6 +62,44 @@ export async function calculateSpace(
     new vscode.Position(range.end.line + 2, 0),
     implCode
   );
+
+  // Create the MAX_FIELD if Vec or String present
+  // TODO: handle for string case
+  const allVecFields = strcutFields.filter((fields) =>
+    // fields.type.startsWith("String") ||
+    fields.type.startsWith("Vec")
+  );
+
+  // Generate the const code
+  const vecConstCode = await generateConstCode(
+    allVecFields
+  );
+
+  codeAction.edit.insert(
+    document.uri,
+    new vscode.Position(range.end.line + 2, 0),
+    vecConstCode
+  );
+}
+
+async function generateConstCode(
+  allVecFields: { name: string; type: string }[]
+): Promise<string> {
+  // TODO: handle for Strings
+  const maxStrings: string[] = [];
+  if (allVecFields.length !== 0) {
+    for (const field of allVecFields) {
+      const userInput = await vscode.window.showInputBox({
+        prompt: `What is the MAX_${field.name.toUpperCase()}`,
+      });
+
+      maxStrings.push(
+        `pub const MAX_${field.name.toUpperCase()} : u32 = ${userInput};`
+      );
+    }
+    maxStrings.push("\n");
+  }
+  return maxStrings.join("\n");
 }
 
 interface StrcutTpye {
@@ -140,7 +178,7 @@ function generateImplCode(
 ): string {
   const codeLines = [
     `impl ${structName} {`,
-    `    pub const SIZE: usize = 8 + // Anchor discriminator`,
+    `    pub const SIZE: u32 = 8 + // Anchor discriminator`,
   ];
 
   const fieldCount = fields.length;

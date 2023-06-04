@@ -6,7 +6,7 @@ An attempt to write a extension to support [Anchor lang](https://www.anchor-lang
 
 This for now calculate a size of an anchor account struct and creates a impl block as shown below
 
-![](./demo/types.gif)
+![](./demo/max_values.gif)
 
 ---
 
