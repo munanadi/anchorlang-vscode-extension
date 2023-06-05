@@ -9,6 +9,7 @@ import {
   TransportKind,
 } from "vscode-languageclient/node";
 import { calculateSpace } from "./codeActionProvider";
+import { codeCompletionProvider } from "./codeCompletionProvider";
 
 let client: LanguageClient;
 
@@ -76,6 +77,28 @@ export function activate(context: ExtensionContext) {
         return codeAction;
       },
     })
+  );
+
+  // Completions
+  context.subscriptions.push(
+    vscode.languages.registerCompletionItemProvider(
+      "rust",
+      {
+        provideCompletionItems(
+          document: vscode.TextDocument,
+          position: vscode.Position,
+          token: vscode.CancellationToken,
+          context: vscode.CompletionContext
+        ) {
+          return codeCompletionProvider(
+            document,
+            position,
+            token,
+            context
+          );
+        },
+      }
+    )
   );
 }
 

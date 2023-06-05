@@ -4,9 +4,13 @@ An attempt to write a extension to support [Anchor lang](https://www.anchor-lang
 
 ---
 
-This for now calculate a size of an anchor account struct and creates a impl block as shown below
+#### 1. Calculates Account sizes for structs
 
 ![](./demo/all_types.gif)
+
+#### 2. Code Snippter
+
+![](./demo/snippets_demo.gif)
 
 ---
 
@@ -17,6 +21,7 @@ This for now calculate a size of an anchor account struct and creates a impl blo
   - [x] ~~string~~
   - [x] ~~enums~~
 - [ ] Code Completion
+  - [x] ~~Added PDA, system program~~
 - [ ] Open issues and request for features..
 
 ---
