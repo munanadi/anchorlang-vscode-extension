@@ -110,8 +110,7 @@ connection.onDidChangeConfiguration((change) => {
     documentSettings.clear();
   } else {
     globalSettings = <ExampleSettings>(
-      (change.settings.languageServerExample ||
-        defaultSettings)
+      (change.settings.anchorlsp || defaultSettings)
     );
   }
 
@@ -129,7 +128,7 @@ function getDocumentSettings(
   if (!result) {
     result = connection.workspace.getConfiguration({
       scopeUri: resource,
-      section: "languageServerExample",
+      section: "anchorlsp",
     });
     documentSettings.set(resource, result);
   }
