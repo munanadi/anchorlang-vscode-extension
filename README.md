@@ -6,15 +6,15 @@ An attempt to write a extension to support [Anchor lang](https://www.anchor-lang
 
 This for now calculate a size of an anchor account struct and creates a impl block as shown below
 
-![](./demo/max_values.gif)
+![](./demo/all_types.gif)
 
 ---
 
 ## Expected Features
 
-- [ ] Find Space for a account struct
+- [x] Find Space for a account struct
   - [x] ~~simple types~~
-  - [ ] string
+  - [x] ~~string~~
   - [x] ~~enums~~
 - [ ] Code Completion
 - [ ] Open issues and request for features..

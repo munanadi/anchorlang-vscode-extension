@@ -64,31 +64,38 @@ export async function calculateSpace(
   );
 
   // Create the MAX_FIELD if Vec or String present
-  // TODO: handle for string case
   const allVecFields = strcutFields.filter((fields) =>
-    // fields.type.startsWith("String") ||
     fields.type.startsWith("Vec")
+  );
+
+  const allStringFields = strcutFields.filter((fields) =>
+    fields.type.startsWith("String")
   );
 
   // Generate the const code
   const vecConstCode = await generateConstCode(
     allVecFields
   );
+  const stringConstCode = await generateConstCode(
+    allStringFields
+  );
+
+  const constCode = `${vecConstCode}\n${stringConstCode}`;
 
   codeAction.edit.insert(
     document.uri,
     new vscode.Position(range.end.line + 2, 0),
-    vecConstCode
+    constCode
   );
 }
 
 async function generateConstCode(
-  allVecFields: { name: string; type: string }[]
+  allFields: { name: string; type: string }[]
 ): Promise<string> {
-  // TODO: handle for Strings
   const maxStrings: string[] = [];
-  if (allVecFields.length !== 0) {
-    for (const field of allVecFields) {
+
+  if (allFields.length !== 0) {
+    for (const field of allFields) {
       const userInput = await vscode.window.showInputBox({
         prompt: `What is the MAX_${field.name.toUpperCase()}`,
       });
@@ -159,6 +166,11 @@ function praseStrcut(text: string): StrcutTpye {
 
   const fields: { name: string; type: string }[] = [];
   for (const fieldType of fieldsWithTypes) {
+    if (fieldType.startsWith("//")) {
+      // skip the commented out field
+      continue;
+    }
+
     const [filedWithVis, type] = fieldType.split(":"); // pub ident_name: type
     const fieldName = filedWithVis.split(" ")[1].trim(); // pub ident_name
     fields.push({ name: fieldName, type: type.trim() });
@@ -252,13 +264,8 @@ function getMemberSizeCodeLine(
         spaceForType(genericType) * parseInt(amount)
       } + // (${spaceForType(genericType)} * ${amount})`;
     } else if (isString) {
-      console.log(`${name} is a String`);
-      // TODO: Ask for input for max size from user.
-      spaceAllocated = `4 // Add input from user here`;
+      spaceAllocated = `4 + MAX_${name.toUpperCase()}`;
     } else {
-      // Has to be Enum. Find it in the document
-      // TODO: handle Enums.
-
       const enumBody = EnumObjs[type];
       const fields = enumBody
         .split("\n")
@@ -301,8 +308,6 @@ function getMemberSizeCodeLine(
         : `1 + ${spaceForType(largestField[1])} +// ${
             largestField[0]
           } is the largest field`;
-
-      console.log(spaceAllocated);
     }
   }
 
