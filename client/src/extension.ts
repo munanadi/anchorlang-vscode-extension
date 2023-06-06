@@ -9,7 +9,7 @@ import {
   TransportKind,
 } from "vscode-languageclient/node";
 import { calculateSpace } from "./codeActionProvider";
-import { codeCompletionProvider } from "./codeCompletionProvider";
+import { CodeCompletionItemProvider } from "./codeCompletionProvider";
 
 let client: LanguageClient;
 
@@ -18,6 +18,10 @@ export function activate(context: ExtensionContext) {
   const serverModule = context.asAbsolutePath(
     path.join("server", "out", "server.js")
   );
+
+  let debugOptions = {
+    execArgv: ["--nolazy", "--inspect=6009"],
+  };
 
   // If the extension is launched in debug mode then the debug server options are used
   // Otherwise the run options are used
@@ -29,6 +33,7 @@ export function activate(context: ExtensionContext) {
     debug: {
       module: serverModule,
       transport: TransportKind.ipc,
+      options: debugOptions,
     },
   };
 
@@ -83,21 +88,7 @@ export function activate(context: ExtensionContext) {
   context.subscriptions.push(
     vscode.languages.registerCompletionItemProvider(
       "rust",
-      {
-        provideCompletionItems(
-          document: vscode.TextDocument,
-          position: vscode.Position,
-          token: vscode.CancellationToken,
-          context: vscode.CompletionContext
-        ) {
-          return codeCompletionProvider(
-            document,
-            position,
-            token,
-            context
-          );
-        },
-      }
+      new CodeCompletionItemProvider()
     )
   );
 }
