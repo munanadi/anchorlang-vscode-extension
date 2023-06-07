@@ -9,7 +9,7 @@
 
 </div>
 
-An attempt to write a extension to support [Anchor lang](https://www.anchor-lang.com/) dev in VS-code.
+An attempt to write a extension to support [Anchor lang](https://www.anchor-lang.com/) dev in VS-code. [Try it out](https://marketplace.visualstudio.com/items?itemName=munanadi.anchor-lang-vscode-extension)
 
 ---
 
