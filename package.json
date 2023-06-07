@@ -9,7 +9,7 @@
     "url": "https://github.com/munanadi/anchorlang-vscode-extension"
   },
   "publisher": "munanadi",
-  "icon": "./images/anchor-logo.png",
+  "icon": "images/anchor-logo.png",
   "categories": [],
   "keywords": [
     "anchor-lang",
