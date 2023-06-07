@@ -348,7 +348,7 @@ function spaceForType(type: string): number {
     case "pubkey":
       return 32;
     default: {
-      console.log(`${type} not known`);
+      // console.log(`${type} not known`);
       return 0;
     }
   }

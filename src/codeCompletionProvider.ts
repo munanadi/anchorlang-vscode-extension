@@ -1,11 +1,7 @@
 import * as vscode from "vscode";
-import {
-  CompletionItemKind,
-  CompletionItemProvider,
-} from "vscode";
 
 export class CodeCompletionItemProvider
-  implements CompletionItemProvider
+  implements vscode.CompletionItemProvider
 {
   provideCompletionItems(
     document: vscode.TextDocument,

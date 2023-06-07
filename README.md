@@ -1,4 +1,13 @@
-# Anchor lang Extension
+# Anchor lang VSCode Extension
+
+<div align="center">
+  <img height="170x" src="https://pbs.twimg.com/media/FVUVaO9XEAAulvK?format=png&name=small" />
+
+  <p>
+    <strong>Anchor lang VS Code Extension</strong>
+  </p>
+
+</div>
 
 An attempt to write a extension to support [Anchor lang](https://www.anchor-lang.com/) dev in VS-code.
 
